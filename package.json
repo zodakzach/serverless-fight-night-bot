@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build-bot": "bun dressed build -ir",
+    "dev": "bun .dressed"
   },
   "devDependencies": {
     "@types/bun": "latest"

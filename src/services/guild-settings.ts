@@ -10,6 +10,8 @@ export interface GuildSettings {
   timezone: string;
   notificationsEnabled: boolean;
   scheduledEventsEnabled: boolean;
+  lastPosted?: Partial<Record<OrgId, string>>;
+  scheduledEvents?: Partial<Record<OrgId, string>>;
 }
 
 const DEFAULT_TIMEZONE = process.env.TZ ?? "Etc/UTC";
@@ -22,12 +24,27 @@ const defaultSettings: GuildSettings = {
   timezone: DEFAULT_TIMEZONE,
   notificationsEnabled: false,
   scheduledEventsEnabled: false,
+  lastPosted: {},
+  scheduledEvents: {},
 };
+
+interface SimpleKVListOptions {
+  prefix?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+interface SimpleKVListResult {
+  keys: { name: string }[];
+  list_complete: boolean;
+  cursor?: string;
+}
 
 interface SimpleKVNamespace {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
   delete?(key: string): Promise<void>;
+  list?(options?: SimpleKVListOptions): Promise<SimpleKVListResult>;
 }
 
 export type GuildSettingsNamespace = SimpleKVNamespace;
@@ -148,6 +165,65 @@ export function formatGuildSettings(settings: GuildSettings): string {
 
 export function __clearGuildSettingsCache(): void {
   cache.clear();
+}
+
+export async function listGuildSettings(): Promise<
+  Array<{ guildId: string; settings: GuildSettings }>
+> {
+  const kv = resolveNamespace();
+  if (kv?.list) {
+    const results: Array<{ guildId: string; settings: GuildSettings }> = [];
+    let cursor: string | undefined;
+    do {
+      const response = await kv.list({
+        prefix: KEY_PREFIX,
+        cursor,
+      });
+      for (const entry of response.keys) {
+        const guildId = entry.name.slice(KEY_PREFIX.length);
+        const settings = await getGuildSettings(guildId);
+        results.push({ guildId, settings });
+      }
+      if (response.list_complete) {
+        break;
+      }
+      cursor = response.cursor;
+    } while (cursor);
+    return results;
+  }
+
+  return Array.from(cache.entries()).map(([guildId, settings]) => ({
+    guildId,
+    settings,
+  }));
+}
+
+export async function markGuildEventPosted(
+  guildId: string,
+  org: OrgId,
+  dateKey: string,
+): Promise<void> {
+  const current = await getGuildSettings(guildId);
+  await updateGuildSettings(guildId, {
+    lastPosted: {
+      ...(current.lastPosted ?? {}),
+      [org]: dateKey,
+    },
+  });
+}
+
+export async function markGuildScheduledEvent(
+  guildId: string,
+  org: OrgId,
+  eventId: string,
+): Promise<void> {
+  const current = await getGuildSettings(guildId);
+  await updateGuildSettings(guildId, {
+    scheduledEvents: {
+      ...(current.scheduledEvents ?? {}),
+      [org]: eventId,
+    },
+  });
 }
 
 function parseGuildSettings(value: string): GuildSettings | null {

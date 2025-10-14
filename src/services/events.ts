@@ -129,6 +129,12 @@ interface CandidateEvent {
   state: string;
 }
 
+const IGNORED_EVENT_KEYWORDS = [
+  "contender series",
+  "dana white's contender",
+  "dwcs",
+];
+
 export async function getNextEvent(
   org: OrgId,
   now = new Date(),
@@ -165,6 +171,9 @@ async function fetchNextUfcEvent(
   for (const root of roots) {
     if (!root?.events?.length) continue;
     for (const event of root.events) {
+      if (isIgnoredEvent(event)) {
+        continue;
+      }
       const annotated = annotateEvent(event);
       if (annotated) {
         candidates.push(annotated);
@@ -293,6 +302,15 @@ function buildFightEvent(
   const broadcast = extractBroadcast(mainCompetition);
 
   const url = selectEventUrl(event.links) ?? DEFAULT_EVENT_URL;
+  const mainStart =
+    parseUtcDate(mainCompetition?.startDate) ??
+    parseUtcDate(mainCompetition?.date) ??
+    start;
+  const mainEnd =
+    parseUtcDate(mainCompetition?.endDate) ??
+    parseUtcDate(mainCompetition?.date) ??
+    end ??
+    null;
 
   return {
     id: event.id ?? event.uid ?? "unknown",
@@ -300,8 +318,8 @@ function buildFightEvent(
     name: event.name ?? "UFC Fight Night",
     shortName: event.shortName ?? event.name ?? "UFC Event",
     mainEvent,
-    startTime: start,
-    endTime: end ?? null,
+    startTime: mainStart ?? start,
+    endTime: mainEnd,
     venue: venueName,
     city,
     broadcast,
@@ -361,6 +379,14 @@ function formatCompetitors(competition: ScoreboardCompetition): string {
     return `${red} vs ${blue}`;
   }
   return red || blue || "TBA";
+}
+
+function isIgnoredEvent(event: ScoreboardEvent): boolean {
+  const name = event.name?.toLowerCase() ?? "";
+  const short = event.shortName?.toLowerCase() ?? "";
+  return IGNORED_EVENT_KEYWORDS.some(
+    (keyword) => name.includes(keyword) || short.includes(keyword),
+  );
 }
 
 function extractNames(competition: ScoreboardCompetition): [string, string] {
