@@ -1,0 +1,9 @@
+{
+  "name": "serverless-fight-night-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "bunx dressed build",
+  },
+}
