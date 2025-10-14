@@ -1,5 +1,4 @@
-// @ts-ignore The dressed build step generates this module with your commands/components/events.
-import { commands, components, events, config } from "../.dressed";
+import { commands, components, events, config } from "../.dressed/index.mjs";
 import {
   handleRequest,
   setupCommands,
