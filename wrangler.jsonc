@@ -3,7 +3,13 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-10-14",
   "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "FIGHT_NIGHT_SETTINGS",
+      "id": "dc796a4cf4c142b5b52579eebdc31d6e"
+    }
+  ],
   "build": {
-    "command": "bun build-bot",
-  },
+    "command": "bun build-bot"
+  }
 }

@@ -6,13 +6,41 @@ import {
   setupEvents,
 } from "dressed/server";
 
+type WorkerEnv = Record<string, unknown> & {
+  FIGHT_NIGHT_SETTINGS?: {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string): Promise<void>;
+    delete?(key: string): Promise<void>;
+    list?(
+      options?: {
+        prefix?: string;
+        limit?: number;
+        cursor?: string;
+      },
+    ): Promise<{
+      keys: { name: string }[];
+      list_complete: boolean;
+      cursor?: string;
+    }>;
+  };
+};
+
+function registerEnv(env: WorkerEnv): void {
+  const globalAny = globalThis as Record<PropertyKey, unknown>;
+  globalAny.env = env;
+  if (env.FIGHT_NIGHT_SETTINGS) {
+    globalAny.FIGHT_NIGHT_SETTINGS = env.FIGHT_NIGHT_SETTINGS;
+  }
+}
+
 export default {
   fetch: (
     request: Request,
-    _env: unknown,
+    env: WorkerEnv,
     ctx: { waitUntil<T>(promise: Promise<T>): void },
-  ) =>
-    handleRequest(
+  ) => {
+    registerEnv(env);
+    return handleRequest(
       request,
       (...args) => {
         const promise = setupCommands(commands)(...args);
@@ -30,5 +58,6 @@ export default {
         return promise;
       },
       config,
-    ),
+    );
+  },
 };
