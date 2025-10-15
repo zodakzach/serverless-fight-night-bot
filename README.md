@@ -1,73 +1,56 @@
-# serverless-fight-night-bot
+# Serverless Fight Night Bot
 
-To install dependencies:
+Serverless Discord bot that keeps your community up to speed on UFC fight nights—built on Cloudflare Workers with [Bun](https://bun.com) and [Dressed](https://dressed.js.org) for slash-command ergonomics.
 
-```bash
-bun install
-```
+## Quick Links
+- Invite the bot: [Add Fight Night Bot to your server](https://discord.com/oauth2/authorize?client_id=1407815699929497760)
+- Source code: [github.com/zodakzach/serverless-fight-night-bot](https://github.com/zodakzach/serverless-fight-night-bot.git)
+- Dressed docs: [dressed.js.org](https://dressed.js.org)
 
-To run:
+## What It Does
+- Schedules and posts fight-night reminders per guild, per org (UFC today, more to come).
+- Pulls live event data from the ESPN scoreboard API and avoids duplicate reminders.
+- Supports configurable delivery channels, notification hours, and timezones.
+- Optionally crossposts from Announcement channels for extra reach.
+- Provides `/next-event` lookup and full `/status` diagnostics for admins.
 
-```bash
-bun run index.ts
-```
+## Slash Commands
+- `/settings org org:<ufc>` — Select the org you want to track (required before enabling notifications).
+- `/settings channel channel:<#channel>` — Choose the destination channel (defaults to current when omitted).
+- `/settings delivery mode:<message|announcement>` — Control how reminders are delivered.
+- `/settings hour hour:<0-23>` — Pick the daily notification hour in the guild timezone.
+- `/settings timezone tz:<Region/City>` — Override the timezone (falls back to `TZ` env).
+- `/settings notifications state:<on|off>` — Toggle fight-night reminders.
+- `/settings events state:<on|off>` — Toggle creation of Discord Scheduled Events.
+- `/next-event` — Show the next scheduled fight night for the selected org.
+- `/status` — Display all current settings for the guild.
+- `/help` — Summarize available commands and usage.
 
-This project was created using `bun init` in bun v1.2.23. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
-
-## Why
-
-I'm lazy and tired of manually posting fight-night events in my Discord server. I announce fights and share my picks, and keeping up with those event posts is a chore — so I made this bot to announce the fight nights for me.
-
-## What
-
-- Notifies a configured channel on fight nights for your chosen org (UFC supported now).
-- Lets you select the org and destination channel for posts.
-- Provides a quick "next event" lookup command.
-- Tracks last-posted event per guild and per org to prevent duplicates.
-- Optional announcement delivery that publishes in Announcement channels.
-
-## Features
-
-- Org selection per guild (UFC supported today; others later).
-- Notifications are OFF by default; you must set an org before enabling.
-- Channel routing to a specific, configurable channel.
-- Event-day posting with at-most-once delivery per event/guild/org.
-- Optional announcement mode: publish messages from Announcement channels to follower servers (falls back to regular messages when unsupported).
-- Next-event lookup via slash command.
-
-## Commands
-
-Top-level commands:
-
-- `/settings`: Configure guild settings via subcommands:
-  - `/settings org org:<ufc>`: Choose the organization (currently UFC only). Required before enabling notifications.
-  - `/settings channel [channel:<#channel>]`: Pick the channel for notifications (defaults to the current channel if omitted).
-  - `/settings delivery mode:<message|announcement>`: Choose regular messages or announcements. Announcement mode applies only in Announcement channels.
-  - `/settings hour hour:<0-23>`: Set the daily notification hour (guild timezone).
-  - `/settings timezone tz:<Region/City>`: Set the guild timezone (IANA name).
-  - `/settings notifications state:<on|off>`: Enable or disable fight-night posts (requires org set).
-  - `/settings events state:<on|off>`: Enable or disable creating Discord Scheduled Events the day before an event.
-- `/next-event`: Show the next event for the selected org.
-- `/status`: Show current settings for this guild.
-- `/help`: Show available commands and usage.
-
-Dev-only (registered only when `GUILD_ID` is set):
-
-- `/dev-test create-event`: Create a Discord Scheduled Event for the next org event (requires Manage Events; testing only).
-- `/dev-test create-announcement`: Post the next event message+embed now via the notifier path (requires Manage Channels; testing only).
+Dev-only (registered when `GUILD_ID` env is present):
+- `/dev-test create-event` — Create a scheduled event for the next fight night (Manage Events required).
+- `/dev-test create-announcement` — Trigger the full notifier flow instantly (Manage Channels required).
 
 ## Getting Started
+1. `bun install`
+2. Configure environment (see below) in `.env` or via Wrangler secrets.
+3. Register commands and start local dev: `bun .dressed`
+4. Deploy with Wrangler once you are ready: `bun build-bot && wrangler deploy`
 
-- Invite the bot: [Add Fight Night Bot to your server](https://discord.com/oauth2/authorize?client_id=1407815699929497760).
-- Set org: run `/settings org org:<ufc>`.
-- Pick channel: run `/settings channel channel:<#your-channel>`.
-- Optional timezone: run `/settings timezone tz:<Region/City>` (defaults to `TZ` env).
-- Enable notifications: run `/settings notifications on` (notifications are off by default).
-- Verify: run `/next-event` to see the next event for your org.
-  - For a full preview of the daily post, use the dev command `/dev-test create-announcement` in your dev guild.
+### Required Environment Variables
+| Name | Purpose |
+| --- | --- |
+| `DISCORD_APP_ID` | Discord application ID for command registration. |
+| `DISCORD_PUBLIC_KEY` | Discord public key for interaction verification. |
+| `DISCORD_TOKEN` | Bot token used for REST calls and dev utilities. |
+| `RUN_AT` (optional) | Default notification hour (0-23) when `/settings hour` is unset. |
+| `TZ` (optional) | Default timezone for guilds that have not configured one. |
+| `ESPN_USER_AGENT` (optional) | Overrides the default user agent for ESPN API calls. |
 
-Notes
+Cloudflare KV (`FIGHT_NIGHT_SETTINGS`) stores guild preferences and is injected via `wrangler.jsonc`.
 
-- Posts run daily at the configured hour (per guild via `/settings hour`, default from `RUN_AT`) in your guild's timezone; event-day posts only. Minutes are ignored.
-- You must set an org before enabling notifications.
-- Announcement mode works only in Announcement (News) channels. The bot will send the message normally and then attempt to publish it (crosspost). If the channel type is not Announcement or publishing fails, the message remains as a regular post.
+## Using the Bot
+- Invite the bot with the link above.
+- In Discord, run `/settings org org:<ufc>` followed by `/settings notifications state:on`.
+- Verify with `/next-event`; if you need to adjust anything, `/status` shows the current configuration.
+
+Posts run daily at the configured hour and will only fire on event days. Announcement delivery crossposts when possible and gracefully falls back to standard messages otherwise.
