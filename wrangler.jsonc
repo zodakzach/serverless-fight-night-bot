@@ -9,6 +9,9 @@
       "id": "dc796a4cf4c142b5b52579eebdc31d6e",
     },
   ],
+  "triggers": {
+    "crons": ["0 * * * *"],
+  },
   "build": {
     "command": "bun build-bot",
   },

@@ -5,6 +5,7 @@ import {
   setupComponents,
   setupEvents,
 } from "dressed/server";
+import { runNotifier, type NotifierEnv } from "./notifier/notifier.ts";
 
 type WorkerEnv = Record<string, unknown> & {
   DISCORD_APP_ID?: string;
@@ -27,6 +28,11 @@ type WorkerEnv = Record<string, unknown> & {
       cursor?: string;
     }>;
   };
+};
+
+type ScheduledEvent = {
+  scheduledTime?: number;
+  cron?: string;
 };
 
 function registerEnv(env: WorkerEnv): void {
@@ -89,5 +95,25 @@ export default {
       },
       config,
     );
+  },
+  scheduled: (
+    event: ScheduledEvent,
+    env: WorkerEnv,
+    ctx: { waitUntil<T>(promise: Promise<T>): void },
+  ) => {
+    registerEnv(env);
+
+    const notifierEnv: NotifierEnv = {
+      DISCORD_TOKEN:
+        typeof env.DISCORD_TOKEN === "string" ? env.DISCORD_TOKEN : "",
+      FIGHT_NIGHT_SETTINGS: env.FIGHT_NIGHT_SETTINGS,
+    };
+
+    const scheduledTime =
+      typeof event.scheduledTime === "number"
+        ? new Date(event.scheduledTime)
+        : new Date();
+
+    ctx.waitUntil(runNotifier(notifierEnv, scheduledTime));
   },
 };

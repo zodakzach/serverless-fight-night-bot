@@ -40,3 +40,5 @@ coverage/
 .dressed
 .wrangler/
 .wrangler-out
+
+codegrab-output.md
