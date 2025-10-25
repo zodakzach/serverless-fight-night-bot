@@ -143,6 +143,25 @@ export async function notifyGuild(
     allowed_mentions: { parse: [] },
   });
 
+  if (settings.scheduledEventsEnabled) {
+    try {
+      const scheduled = await createScheduledEventForGuild(guildId, env, {
+        now,
+        force,
+      });
+      if (scheduled.created) {
+        console.log(
+          `Scheduled event created for guild ${guildId} (event ${scheduled.eventId ?? "unknown"}).`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Scheduled event creation during notify failed for guild ${guildId}:`,
+        error,
+      );
+    }
+  }
+
   if (settings.deliveryMode === "announcement") {
     try {
       await crosspostDiscordMessage(env.DISCORD_TOKEN, channelId, message.id);
@@ -202,9 +221,14 @@ export async function createScheduledEventForGuild(
     timezone,
   );
   const nowKey = formatDateKey(options.now ?? new Date(), timezone);
+  const withinCreationWindow =
+    nowKey === createDayKey || nowKey === eventDayKey;
 
-  if (!force && nowKey !== createDayKey) {
-    return { created: false, reason: "Not the day before the event." };
+  if (!force && !withinCreationWindow) {
+    return {
+      created: false,
+      reason: "Not within scheduled event creation window.",
+    };
   }
 
   if (!force && settings.scheduledEvents?.[settings.org] === eventDayKey) {
